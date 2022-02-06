@@ -48,7 +48,7 @@ sign(Data, Key, NS, Opts) ->
     Signature = public_key:sign(body(Data, NS, R, Algo), Algo, Key),
     SigType = sig_type(Key, Algo),
     Sig = <<?STRING(SigType), ?STRING(Signature)>>,
-    EncPub = ssh_file:encode(priv_to_public(Key), ssh2_pubkey),
+    EncPub = encode_key(priv_to_public(Key)),
     Result =
         <<?MAGIC_PREAMBLE, ?UINT32(?SIG_VERSION), ?STRING(EncPub), ?STRING(NS0),
             ?STRING(R), ?STRING(atom_to_binary(Algo)), ?STRING(Sig)>>,
@@ -169,6 +169,12 @@ priv_to_public(#'RSAPrivateKey'{modulus = Mod, publicExponent = Exp}) ->
     #'RSAPublicKey'{modulus = Mod, publicExponent = Exp};
 priv_to_public(Other) ->
     Other.
+
+-if(?OTP_RELEASE >= 24).
+encode_key(Key) -> ssh_file:encode(Key, ssh2_pubkey).
+-else.
+encode_key(Key) -> public_key:ssh_encode(Key, ssh2_pubkey).
+-endif.
 
 split(<<D:70/binary, Rest/binary>>) ->
     [D, $\n | split(Rest)];
