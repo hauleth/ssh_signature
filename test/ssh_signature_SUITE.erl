@@ -83,7 +83,7 @@ can_signature_can_be_verified_by_ssh_keygen(Config) ->
     file:write_file(AllowedSignersFile, ["test@example.com ", ExportedKey]),
     file:write_file(SigFile, Signature),
 
-    true =
+    ?assert(
         ssh_keygen(
             [
                 "-Y",
@@ -98,14 +98,20 @@ can_signature_can_be_verified_by_ssh_keygen(Config) ->
                 SigFile
             ],
             Data
-        ),
+        )
+    ),
 
     Config.
 
 ssh_keygen(Args, Input) ->
+    Stdout = fun(_, _, Data) ->
+        ct:pal("ssh-keygen -> ~s", [Data])
+    end,
     exec:start(),
     Exec = os:find_executable("ssh-keygen"),
-    {ok, Pid, _OsPid} = exec:run([Exec | Args], [stdin, monitor, {stdout, print}]),
+    {ok, Pid, _OsPid} = exec:run([Exec | Args], [
+        stdin, monitor, {stdout, Stdout}
+    ]),
     exec:send(Pid, Input),
     exec:send(Pid, eof),
     receive
