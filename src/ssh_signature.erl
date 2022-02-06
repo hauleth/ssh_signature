@@ -73,9 +73,9 @@ sign(Data, Key, NS, Opts) ->
 verify(Data, Signature) ->
     Sig0 = string:trim(Signature),
     Sig1 = iolist_to_binary(Sig0),
-    Size = byte_size(Sig1),
+    Size = byte_size(Sig1) - length(?BEGIN) - length(?END) - 2,
     case Sig1 of
-        <<?BEGIN, $\n, Sig2:(Size - 30 - 28)/binary, $\n, ?END>> ->
+        <<?BEGIN, $\n, Sig2:Size/binary, $\n, ?END>> ->
             Sig3 = base64:decode(Sig2),
             case parse(Sig3) of
                 {ok, #{
