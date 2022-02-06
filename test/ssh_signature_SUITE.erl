@@ -36,9 +36,14 @@ init_per_group(GroupName, Config) when
     GroupName =:= rsa3072;
     GroupName =:= rsa4096
 ->
-    Key = create_key(GroupName),
-    ct:log("~p", [Key]),
-    [{key, Key} | Config].
+    try
+        Key = create_key(GroupName),
+        ct:log("~p", [Key]),
+        [{key, Key} | Config]
+    catch
+        _C:_R:_S ->
+            {skip, "Algorithm not supported"}
+    end.
 
 create_key(ed25519) ->
     public_key:generate_key({namedCurve, ?'id-Ed25519'});
@@ -74,7 +79,7 @@ can_signature_can_be_verified_by_ssh_keygen(Config) ->
     SigFile = filename:join(PrivDir, "data.sig"),
 
     Data = crypto:strong_rand_bytes(256),
-    ExportedKey = ssh_file:encode([{priv_to_public(Key), []}], openssh_key),
+    ExportedKey = encode([{priv_to_public(Key), []}]),
 
     Signature = ssh_signature:sign(Data, Key, <<"file">>, #{hash => Hash}),
 
@@ -136,3 +141,11 @@ priv_to_public(#'RSAPrivateKey'{modulus = Mod, publicExponent = Exp}) ->
     #'RSAPublicKey'{modulus = Mod, publicExponent = Exp};
 priv_to_public(Other) ->
     Other.
+
+-if(?OTP_RELEASE < "24").
+encode(Key) -> public_key:ssh_encode(Key, openssh_public_key).
+decode(Key) -> public_key:ssh_decode(Key, openssh_public_key).
+-else.
+encode(Key) -> ssh_file:encode(Key, openssh_key).
+decode(Key) -> ssh_file:decode(Key, openssh_key).
+-endif.

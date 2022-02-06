@@ -48,7 +48,7 @@ sign(Data, Key, NS, Opts) ->
     Signature = public_key:sign(body(Data, NS, R, Algo), Algo, Key),
     SigType = sig_type(Key, Algo),
     Sig = <<?STRING(SigType), ?STRING(Signature)>>,
-    EncPub = encode_key(priv_to_public(Key)),
+    EncPub = encode(priv_to_public(Key)),
     Result =
         <<?MAGIC_PREAMBLE, ?UINT32(?SIG_VERSION), ?STRING(EncPub), ?STRING(NS0),
             ?STRING(R), ?STRING(atom_to_binary(Algo, utf8)), ?STRING(Sig)>>,
@@ -109,7 +109,7 @@ parse(
     SigDS =:= SAS + 4 + SigS + 4,
     (SAlgo =:= <<"sha256">> orelse SAlgo =:= <<"sha512">>)
 ->
-    PubKey = ssh_file:decode(EncPub, ssh2_pubkey),
+    PubKey = decode(EncPub),
     Algo =
         case SAlgo of
             <<"sha256">> -> sha256;
@@ -170,10 +170,12 @@ priv_to_public(#'RSAPrivateKey'{modulus = Mod, publicExponent = Exp}) ->
 priv_to_public(Other) ->
     Other.
 
--if(?OTP_RELEASE >= 24).
-encode_key(Key) -> ssh_file:encode(Key, ssh2_pubkey).
+-if(?OTP_RELEASE < "24").
+encode(Key) -> public_key:ssh_encode(Key, ssh2_pubkey).
+decode(Key) -> public_key:ssh_decode(Key, ssh2_pubkey).
 -else.
-encode_key(Key) -> public_key:ssh_encode(Key, ssh2_pubkey).
+encode(Key) -> ssh_file:encode(Key, ssh2_pubkey).
+decode(Key) -> ssh_file:decode(Key, ssh2_pubkey).
 -endif.
 
 split(<<D:70/binary, Rest/binary>>) ->
