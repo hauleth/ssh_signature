@@ -51,7 +51,7 @@ sign(Data, Key, NS, Opts) ->
     EncPub = encode_key(priv_to_public(Key)),
     Result =
         <<?MAGIC_PREAMBLE, ?UINT32(?SIG_VERSION), ?STRING(EncPub), ?STRING(NS0),
-            ?STRING(R), ?STRING(atom_to_binary(Algo)), ?STRING(Sig)>>,
+            ?STRING(R), ?STRING(atom_to_binary(Algo, utf8)), ?STRING(Sig)>>,
     iolist_to_binary([?BEGIN, $\n, split(base64:encode(Result)), $\n, ?END]).
 
 %% @doc Verify `Signature' of `Data'.

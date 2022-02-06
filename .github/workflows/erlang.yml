@@ -13,17 +13,11 @@ jobs:
     - name: Install OpenSSH
       run: sudo apt install openssh-client
     - uses: actions/checkout@v1
-    - name: Set up Elixir
+    - name: Set up Erlang
       uses: erlef/setup-beam@v1
       with:
         otp-version: ${{ matrix.otp_version }}
         rebar3-version: '3.16'
-    - name: Restore dependencies cache
-      uses: actions/cache@v2
-      with:
-        path: deps
-        key: ${{ runner.os }}-otp-${{ matrix.otp_version }}-mix-${{ hashFiles('**/rebar.lock') }}
-        restore-keys: ${{ runner.os }}-otp-${{ matrix.otp_version }}-rebar-
     - name: Compile
       run: rebar3 compile
     - name: Run tests
