@@ -1,5 +1,8 @@
 -module(ssh_signature).
 
+-compile({nowarn_deprecated_function, {public_key, ssh_encode, 2}}).
+-compile({nowarn_deprecated_function, {public_key, ssh_decode, 2}}).
+
 -include_lib("public_key/include/public_key.hrl").
 
 -export([sign/3, sign/4]).
@@ -133,11 +136,11 @@ parse(_) ->
 
 body(Data, NS, R, Algo) ->
     H = crypto:hash(Algo, Data),
-    <<?MAGIC_PREAMBLE, ?STRING(NS), ?STRING(R), ?STRING(atom_to_binary(Algo)),
-        ?STRING(H)>>.
+    <<?MAGIC_PREAMBLE, ?STRING(NS), ?STRING(R),
+        ?STRING(atom_to_binary(Algo, utf8)), ?STRING(H)>>.
 
 sig_type({ed_pri, Type, _Pub, _Pri}, _Algo) ->
-    <<"ssh-", (atom_to_binary(Type))/binary>>;
+    <<"ssh-", (atom_to_binary(Type, utf8))/binary>>;
 sig_type(#'ECPrivateKey'{parameters = {namedCurve, ?'id-Ed25519'}}, _) ->
     <<"ssh-ed25519">>;
 sig_type(#'ECPrivateKey'{parameters = {namedCurve, ?'id-Ed448'}}, _) ->
@@ -170,13 +173,21 @@ priv_to_public(#'RSAPrivateKey'{modulus = Mod, publicExponent = Exp}) ->
 priv_to_public(Other) ->
     Other.
 
--if(?OTP_RELEASE < "24").
-encode(Key) -> public_key:ssh_encode(Key, ssh2_pubkey).
-decode(Key) -> public_key:ssh_decode(Key, ssh2_pubkey).
--else.
-encode(Key) -> ssh_file:encode(Key, ssh2_pubkey).
-decode(Key) -> ssh_file:decode(Key, ssh2_pubkey).
--endif.
+encode(Key) ->
+    case erlang:system_info(otp_release) < "24" of
+        true ->
+            public_key:ssh_encode(Key, ssh2_pubkey);
+        false ->
+            ssh_file:encode(Key, ssh2_pubkey)
+    end.
+
+decode(Key) ->
+    case erlang:system_info(otp_release) < "24" of
+        true ->
+            public_key:ssh_decode(Key, ssh2_pubkey);
+        false ->
+            ssh_file:decode(Key, ssh2_pubkey)
+    end.
 
 split(<<D:70/binary, Rest/binary>>) ->
     [D, $\n | split(Rest)];

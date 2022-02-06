@@ -4,6 +4,9 @@
 
 -compile(export_all).
 
+-compile({nowarn_deprecated_function, {public_key, ssh_encode, 2}}).
+-compile({nowarn_deprecated_function, {public_key, ssh_decode, 2}}).
+
 -include_lib("stdlib/include/assert.hrl").
 -include_lib("common_test/include/ct.hrl").
 
@@ -142,10 +145,18 @@ priv_to_public(#'RSAPrivateKey'{modulus = Mod, publicExponent = Exp}) ->
 priv_to_public(Other) ->
     Other.
 
--if(?OTP_RELEASE < "24").
-encode(Key) -> public_key:ssh_encode(Key, openssh_public_key).
-decode(Key) -> public_key:ssh_decode(Key, openssh_public_key).
--else.
-encode(Key) -> ssh_file:encode(Key, openssh_key).
-decode(Key) -> ssh_file:decode(Key, openssh_key).
--endif.
+encode(Key) ->
+    case erlang:system_info(otp_release) < "24" of
+        true ->
+            public_key:ssh_encode(Key, openssh_public_key);
+        false ->
+            ssh_file:encode(Key, openssh_key)
+    end.
+
+decode(Key) ->
+    case erlang:system_info(otp_release) < "24" of
+        true ->
+            public_key:ssh_decode(Key, openssh_public_key);
+        false ->
+            ssh_file:decode(Key, openssh_key)
+    end.
