@@ -1,5 +1,8 @@
 -module(ssh_signature).
 
+-compile({nowarn_deprecated_function, {public_key, ssh_encode, 2}}).
+-compile({nowarn_deprecated_function, {public_key, ssh_decode, 2}}).
+
 -include_lib("public_key/include/public_key.hrl").
 
 -export([sign/3, sign/4]).
@@ -48,10 +51,10 @@ sign(Data, Key, NS, Opts) ->
     Signature = public_key:sign(body(Data, NS, R, Algo), Algo, Key),
     SigType = sig_type(Key, Algo),
     Sig = <<?STRING(SigType), ?STRING(Signature)>>,
-    EncPub = ssh_file:encode(priv_to_public(Key), ssh2_pubkey),
+    EncPub = encode(priv_to_public(Key)),
     Result =
         <<?MAGIC_PREAMBLE, ?UINT32(?SIG_VERSION), ?STRING(EncPub), ?STRING(NS0),
-            ?STRING(R), ?STRING(atom_to_binary(Algo)), ?STRING(Sig)>>,
+            ?STRING(R), ?STRING(atom_to_binary(Algo, utf8)), ?STRING(Sig)>>,
     iolist_to_binary([?BEGIN, $\n, split(base64:encode(Result)), $\n, ?END]).
 
 %% @doc Verify `Signature' of `Data'.
@@ -70,9 +73,9 @@ sign(Data, Key, NS, Opts) ->
 verify(Data, Signature) ->
     Sig0 = string:trim(Signature),
     Sig1 = iolist_to_binary(Sig0),
-    Size = byte_size(Sig1),
+    Size = byte_size(Sig1) - length(?BEGIN) - length(?END) - 2,
     case Sig1 of
-        <<?BEGIN, $\n, Sig2:(Size - 30 - 28)/binary, $\n, ?END>> ->
+        <<?BEGIN, $\n, Sig2:Size/binary, $\n, ?END>> ->
             Sig3 = base64:decode(Sig2),
             case parse(Sig3) of
                 {ok, #{
@@ -109,7 +112,7 @@ parse(
     SigDS =:= SAS + 4 + SigS + 4,
     (SAlgo =:= <<"sha256">> orelse SAlgo =:= <<"sha512">>)
 ->
-    PubKey = ssh_file:decode(EncPub, ssh2_pubkey),
+    PubKey = decode(EncPub),
     Algo =
         case SAlgo of
             <<"sha256">> -> sha256;
@@ -133,11 +136,11 @@ parse(_) ->
 
 body(Data, NS, R, Algo) ->
     H = crypto:hash(Algo, Data),
-    <<?MAGIC_PREAMBLE, ?STRING(NS), ?STRING(R), ?STRING(atom_to_binary(Algo)),
-        ?STRING(H)>>.
+    <<?MAGIC_PREAMBLE, ?STRING(NS), ?STRING(R),
+        ?STRING(atom_to_binary(Algo, utf8)), ?STRING(H)>>.
 
 sig_type({ed_pri, Type, _Pub, _Pri}, _Algo) ->
-    <<"ssh-", (atom_to_binary(Type))/binary>>;
+    <<"ssh-", (atom_to_binary(Type, utf8))/binary>>;
 sig_type(#'ECPrivateKey'{parameters = {namedCurve, ?'id-Ed25519'}}, _) ->
     <<"ssh-ed25519">>;
 sig_type(#'ECPrivateKey'{parameters = {namedCurve, ?'id-Ed448'}}, _) ->
@@ -169,6 +172,22 @@ priv_to_public(#'RSAPrivateKey'{modulus = Mod, publicExponent = Exp}) ->
     #'RSAPublicKey'{modulus = Mod, publicExponent = Exp};
 priv_to_public(Other) ->
     Other.
+
+encode(Key) ->
+    case erlang:system_info(otp_release) < "24" of
+        true ->
+            public_key:ssh_encode(Key, ssh2_pubkey);
+        false ->
+            ssh_file:encode(Key, ssh2_pubkey)
+    end.
+
+decode(Key) ->
+    case erlang:system_info(otp_release) < "24" of
+        true ->
+            public_key:ssh_decode(Key, ssh2_pubkey);
+        false ->
+            ssh_file:decode(Key, ssh2_pubkey)
+    end.
 
 split(<<D:70/binary, Rest/binary>>) ->
     [D, $\n | split(Rest)];

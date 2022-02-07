@@ -4,6 +4,9 @@
 
 -compile(export_all).
 
+-compile({nowarn_deprecated_function, {public_key, ssh_encode, 2}}).
+-compile({nowarn_deprecated_function, {public_key, ssh_decode, 2}}).
+
 -include_lib("stdlib/include/assert.hrl").
 -include_lib("common_test/include/ct.hrl").
 
@@ -36,9 +39,14 @@ init_per_group(GroupName, Config) when
     GroupName =:= rsa3072;
     GroupName =:= rsa4096
 ->
-    Key = create_key(GroupName),
-    ct:log("~p", [Key]),
-    [{key, Key} | Config].
+    try
+        Key = create_key(GroupName),
+        ct:log("~p", [Key]),
+        [{key, Key} | Config]
+    catch
+        _C:_R:_S ->
+            {skip, "Algorithm not supported"}
+    end.
 
 create_key(ed25519) ->
     public_key:generate_key({namedCurve, ?'id-Ed25519'});
@@ -74,7 +82,7 @@ can_signature_can_be_verified_by_ssh_keygen(Config) ->
     SigFile = filename:join(PrivDir, "data.sig"),
 
     Data = crypto:strong_rand_bytes(256),
-    ExportedKey = ssh_file:encode([{priv_to_public(Key), []}], openssh_key),
+    ExportedKey = encode([{priv_to_public(Key), []}]),
 
     Signature = ssh_signature:sign(Data, Key, <<"file">>, #{hash => Hash}),
 
@@ -83,7 +91,7 @@ can_signature_can_be_verified_by_ssh_keygen(Config) ->
     file:write_file(AllowedSignersFile, ["test@example.com ", ExportedKey]),
     file:write_file(SigFile, Signature),
 
-    true =
+    ?assert(
         ssh_keygen(
             [
                 "-Y",
@@ -98,14 +106,20 @@ can_signature_can_be_verified_by_ssh_keygen(Config) ->
                 SigFile
             ],
             Data
-        ),
+        )
+    ),
 
     Config.
 
 ssh_keygen(Args, Input) ->
+    Stdout = fun(_, _, Data) ->
+        ct:pal("ssh-keygen -> ~s", [Data])
+    end,
     exec:start(),
     Exec = os:find_executable("ssh-keygen"),
-    {ok, Pid, _OsPid} = exec:run([Exec | Args], [stdin, monitor, {stdout, print}]),
+    {ok, Pid, _OsPid} = exec:run([Exec | Args], [
+        stdin, monitor, {stdout, Stdout}
+    ]),
     exec:send(Pid, Input),
     exec:send(Pid, eof),
     receive
@@ -130,3 +144,19 @@ priv_to_public(#'RSAPrivateKey'{modulus = Mod, publicExponent = Exp}) ->
     #'RSAPublicKey'{modulus = Mod, publicExponent = Exp};
 priv_to_public(Other) ->
     Other.
+
+encode(Key) ->
+    case erlang:system_info(otp_release) < "24" of
+        true ->
+            public_key:ssh_encode(Key, openssh_public_key);
+        false ->
+            ssh_file:encode(Key, openssh_key)
+    end.
+
+decode(Key) ->
+    case erlang:system_info(otp_release) < "24" of
+        true ->
+            public_key:ssh_decode(Key, openssh_public_key);
+        false ->
+            ssh_file:decode(Key, openssh_key)
+    end.

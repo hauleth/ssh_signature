@@ -8,29 +8,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        otp_version: ['24', '23']
+        otp_version: ['22', '23', '24']
     steps:
+    - name: Install OpenSSH
+      run: sudo apt install openssh-client
     - uses: actions/checkout@v1
-    - name: Set up Elixir
+    - name: Set up Erlang
       uses: erlef/setup-beam@v1
       with:
         otp-version: ${{ matrix.otp_version }}
         rebar3-version: '3.16'
-    - name: Restore dependencies cache
-      uses: actions/cache@v2
-      with:
-        path: deps
-        key: ${{ runner.os }}-otp-${{ matrix.otp_version }}-mix-${{ hashFiles('**/rebar.lock') }}
-        restore-keys: ${{ runner.os }}-otp-${{ matrix.otp_version }}-rebar-
     - name: Compile
       run: rebar3 compile
     - name: Run tests
       run: rebar3 do ct --cover
+      env:
+        SHELL: /bin/sh
     - name: Generate coverage data
       run: rebar3 covertool generate
     - uses: codecov/codecov-action@v1
       with:
-        file: ./_build/test/covertool/systemd.covertool.xml
+        file: ./_build/test/covertool/ssh_signature.covertool.xml
         flags: otp-${{ matrix.otp_version }}
 
   docs:
