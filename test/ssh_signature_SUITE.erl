@@ -50,8 +50,6 @@ init_per_group(GroupName, Config) when
 
 create_key(ed25519) ->
     public_key:generate_key({namedCurve, ?'id-Ed25519'});
-create_key(ed448) ->
-    public_key:generate_key({namedCurve, ?'id-Ed448'});
 create_key(rsa2048) ->
     public_key:generate_key({rsa, 2048, 3});
 create_key(rsa3072) ->
