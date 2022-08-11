@@ -3,6 +3,11 @@
 -compile({nowarn_deprecated_function, {public_key, ssh_encode, 2}}).
 -compile({nowarn_deprecated_function, {public_key, ssh_decode, 2}}).
 
+-dialyzer([
+    {no_improper_lists, split/1},
+    {no_match, priv_to_public/1}
+]).
+
 -include_lib("public_key/include/public_key.hrl").
 
 -export([sign/3, sign/4]).
@@ -38,7 +43,7 @@ sign(Data, Key, NS) -> sign(Data, Key, NS, #{}).
     unicode:chardata()
 when
     Opts :: #{
-        hash := hash_algorithm()
+        hash => hash_algorithm()
     }.
 sign(Data, Key, NS, Opts) ->
     NS0 = iolist_to_binary(NS),
@@ -156,6 +161,7 @@ type_sig(<<"rsa-sha2-256">>, #'RSAPublicKey'{}, sha256) -> true;
 type_sig(<<"rsa-sha2-512">>, #'RSAPublicKey'{}, sha512) -> true;
 type_sig(_, _, _) -> false.
 
+-spec priv_to_public(public_key:private_key()) -> public_key:public_key().
 priv_to_public({ed_pri, Type, Pub, _Priv}) ->
     {ed_pub, Type, Pub};
 priv_to_public(#'ECPrivateKey'{
