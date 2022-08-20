@@ -81,7 +81,9 @@ can_verify_signed(Config) ->
     Signature = ssh_signature:sign(Data, Key, <<"file">>, #{hash => Hash}),
     ct:log("Signature = ~s.", [Signature]),
 
-    ?assertMatch({ok, #{public_key := PubKey}}, ssh_signature:verify(Data, Signature)).
+    ?assertMatch(
+        {ok, #{public_key := PubKey}}, ssh_signature:verify(Data, Signature)
+    ).
 
 signature_can_be_verified_by_openssh(Config) ->
     ct:make_priv_dir(),

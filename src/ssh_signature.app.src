@@ -1,6 +1,6 @@
 {application, ssh_signature, [
-    {description, "An OTP library"},
-    {vsn, "0.1.0"},
+    {description, "Pure Erlang implementation of SSH signatures"},
+    {vsn, git},
     {registered, []},
     {applications, [
         kernel,
@@ -12,5 +12,9 @@
     {modules, []},
 
     {licenses, ["Apache 2.0"]},
-    {links, []}
+    {links, [
+        {"GitHub", "https://github.com/hauleth/ssh_signature"},
+        {"PROTOCOL.sshsig",
+            "https://raw.githubusercontent.com/openssh/openssh-portable/6851f4b8c3fc1b3e1114c56106e4dc31369c8513/PROTOCOL.sshsig"}
+    ]}
 ]}.
