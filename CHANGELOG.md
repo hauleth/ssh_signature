@@ -3,9 +3,9 @@
 
 
 <a name="v0.1.0"></a>
-## v0.1.0 - 2022-08-11
+## v0.1.0 - 2022-08-20
 ### Bug Fixes
-- conditionaly use removed function ([`8461cfb`](https://github.com/hauleth/ssh_signature/commit/8461cfba9225e3db47c674dd468bec87e2947205))
+- conditionaly use removed function ([`784871a`](https://github.com/hauleth/ssh_signature/commit/784871a584db40a6a2e954b5d6093babecf0a28e))
 - install OpenSSL GitHub Actions ([`09dd972`](https://github.com/hauleth/ssh_signature/commit/09dd9727b849c5cb90f411041f377a80839a0d40))
 
 ### Documentation
